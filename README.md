@@ -57,6 +57,3 @@ python main.py
 - `utils/`: Funções utilitárias
 - `assets/`: Recursos gráficos e ícones
 
-## Contribuição
-
-Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou enviar pull requests. 

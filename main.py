@@ -167,9 +167,25 @@ class SistemaBiblioteca:
 
     def mostrar_usuarios(self):
         self.limpar_conteudo()
-        label = ctk.CTkLabel(self.frame_conteudo, text="Gerenciamento de Usuários")
+        label = ctk.CTkLabel(self.frame_conteudo, text="Usuários Cadastrados", font=("Arial", 18, "bold"))
         label.pack(pady=20)
-        
+
+        from models.usuario import Usuario
+        usuario_model = Usuario()
+        usuarios = usuario_model.listar_todos()
+
+        frame_lista = ctk.CTkFrame(self.frame_conteudo)
+        frame_lista.pack(padx=20, pady=10, fill="x")
+        header = ["Nome", "Email", "Tipo", "Data de Criação"]
+        for i, h in enumerate(header):
+            ctk.CTkLabel(frame_lista, text=h, font=("Arial", 12, "bold")).grid(row=0, column=i, padx=10, pady=5)
+        for idx, usuario in enumerate(usuarios):
+            nome, email, tipo, data_criacao = usuario[1], usuario[2], usuario[3], usuario[4]
+            ctk.CTkLabel(frame_lista, text=nome).grid(row=idx+1, column=0, padx=10, pady=2)
+            ctk.CTkLabel(frame_lista, text=email).grid(row=idx+1, column=1, padx=10, pady=2)
+            ctk.CTkLabel(frame_lista, text=tipo).grid(row=idx+1, column=2, padx=10, pady=2)
+            ctk.CTkLabel(frame_lista, text=data_criacao).grid(row=idx+1, column=3, padx=10, pady=2)
+
     def mostrar_emprestimos(self):
         self.limpar_conteudo()
         label = ctk.CTkLabel(self.frame_conteudo, text="Gerenciamento de Empréstimos")
