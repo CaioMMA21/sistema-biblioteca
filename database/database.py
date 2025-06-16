@@ -40,21 +40,6 @@ class Database:
         )
         ''')
         
-        # Tabela de empréstimos
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS emprestimos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            livro_id INTEGER NOT NULL,
-            usuario_id INTEGER NOT NULL,
-            data_emprestimo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            data_devolucao TIMESTAMP,
-            status TEXT NOT NULL,
-            multa REAL DEFAULT 0,
-            FOREIGN KEY (livro_id) REFERENCES livros (id),
-            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
-        )
-        ''')
-        
         # Tabela de clientes
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
@@ -62,6 +47,21 @@ class Database:
             nome TEXT NOT NULL,
             numero TEXT NOT NULL,
             email TEXT NOT NULL
+        )
+        ''')
+        
+        # Tabela de empréstimos
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS emprestimos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente_id INTEGER NOT NULL,
+            livro_id INTEGER NOT NULL,
+            data_emprestimo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            data_devolucao_prevista TIMESTAMP NOT NULL,
+            data_devolucao_real TIMESTAMP,
+            status TEXT NOT NULL DEFAULT 'ativo',
+            FOREIGN KEY (cliente_id) REFERENCES clientes (id),
+            FOREIGN KEY (livro_id) REFERENCES livros (id)
         )
         ''')
         

@@ -4,95 +4,44 @@ from datetime import datetime, timedelta
 class Emprestimo:
     def __init__(self):
         self.db = Database()
-        self.dias_emprestimo = 15
-        self.valor_multa_dia = 1.0
         
-    def criar(self, livro_id, usuario_id):
+    def adicionar(self, cliente_id, livro_id, dias):
         conn = self.db.get_connection()
         cursor = conn.cursor()
         
         try:
             # Verifica se o livro está disponível
             cursor.execute("SELECT disponivel FROM livros WHERE id = ?", (livro_id,))
-            disponivel = cursor.fetchone()
+            disponivel = cursor.fetchone()[0]
             
-            if not disponivel or disponivel[0] <= 0:
-                return False, "Livro não disponível"
-                
-            # Cria o empréstimo
+            if disponivel <= 0:
+                return False, "Livro não disponível para empréstimo"
+            
+            # Calcula a data de devolução prevista
+            data_emprestimo = datetime.now()
+            data_devolucao = data_emprestimo + timedelta(days=dias)
+            
+            # Registra o empréstimo
             cursor.execute(
                 """
-                INSERT INTO emprestimos (livro_id, usuario_id, status)
+                INSERT INTO emprestimos (cliente_id, livro_id, data_devolucao_prevista)
                 VALUES (?, ?, ?)
                 """,
-                (livro_id, usuario_id, "emprestado")
+                (cliente_id, livro_id, data_devolucao)
             )
             
-            # Atualiza a disponibilidade do livro
+            # Atualiza a quantidade disponível do livro
             cursor.execute(
                 "UPDATE livros SET disponivel = disponivel - 1 WHERE id = ?",
                 (livro_id,)
             )
             
             conn.commit()
-            return True, "Empréstimo realizado com sucesso"
+            return True, "Empréstimo registrado com sucesso"
+            
         except Exception as e:
             conn.rollback()
-            return False, str(e)
-        finally:
-            conn.close()
-            
-    def devolver(self, emprestimo_id):
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Busca informações do empréstimo
-            cursor.execute(
-                """
-                SELECT livro_id, data_emprestimo 
-                FROM emprestimos 
-                WHERE id = ? AND status = 'emprestado'
-                """,
-                (emprestimo_id,)
-            )
-            emprestimo = cursor.fetchone()
-            
-            if not emprestimo:
-                return False, "Empréstimo não encontrado"
-                
-            livro_id, data_emprestimo = emprestimo
-            
-            # Calcula multa se houver atraso
-            data_devolucao = datetime.now()
-            data_limite = datetime.strptime(data_emprestimo, "%Y-%m-%d %H:%M:%S") + timedelta(days=self.dias_emprestimo)
-            
-            multa = 0
-            if data_devolucao > data_limite:
-                dias_atraso = (data_devolucao - data_limite).days
-                multa = dias_atraso * self.valor_multa_dia
-            
-            # Atualiza o empréstimo
-            cursor.execute(
-                """
-                UPDATE emprestimos 
-                SET status = ?, data_devolucao = ?, multa = ?
-                WHERE id = ?
-                """,
-                ("devolvido", data_devolucao.strftime("%Y-%m-%d %H:%M:%S"), multa, emprestimo_id)
-            )
-            
-            # Atualiza a disponibilidade do livro
-            cursor.execute(
-                "UPDATE livros SET disponivel = disponivel + 1 WHERE id = ?",
-                (livro_id,)
-            )
-            
-            conn.commit()
-            return True, f"Devolução realizada com sucesso. Multa: R$ {multa:.2f}" if multa > 0 else "Devolução realizada com sucesso"
-        except Exception as e:
-            conn.rollback()
-            return False, str(e)
+            return False, f"Erro ao registrar empréstimo: {str(e)}"
         finally:
             conn.close()
             
@@ -102,10 +51,10 @@ class Emprestimo:
         
         cursor.execute(
             """
-            SELECT e.*, l.titulo, u.nome
+            SELECT e.*, c.nome as cliente_nome, l.titulo as livro_titulo
             FROM emprestimos e
+            JOIN clientes c ON e.cliente_id = c.id
             JOIN livros l ON e.livro_id = l.id
-            JOIN usuarios u ON e.usuario_id = u.id
             ORDER BY e.data_emprestimo DESC
             """
         )
@@ -114,38 +63,20 @@ class Emprestimo:
         conn.close()
         return emprestimos
         
-    def listar_ativos(self):
+    def buscar_por_cliente(self, cliente_id):
         conn = self.db.get_connection()
         cursor = conn.cursor()
         
         cursor.execute(
             """
-            SELECT e.*, l.titulo, u.nome
+            SELECT e.*, c.nome as cliente_nome, l.titulo as livro_titulo
             FROM emprestimos e
+            JOIN clientes c ON e.cliente_id = c.id
             JOIN livros l ON e.livro_id = l.id
-            JOIN usuarios u ON e.usuario_id = u.id
-            WHERE e.status = 'emprestado'
-            ORDER BY e.data_emprestimo DESC
-            """
-        )
-        emprestimos = cursor.fetchall()
-        
-        conn.close()
-        return emprestimos
-        
-    def buscar_por_usuario(self, usuario_id):
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            """
-            SELECT e.*, l.titulo
-            FROM emprestimos e
-            JOIN livros l ON e.livro_id = l.id
-            WHERE e.usuario_id = ?
+            WHERE e.cliente_id = ?
             ORDER BY e.data_emprestimo DESC
             """,
-            (usuario_id,)
+            (cliente_id,)
         )
         emprestimos = cursor.fetchall()
         
@@ -158,9 +89,10 @@ class Emprestimo:
         
         cursor.execute(
             """
-            SELECT e.*, u.nome
+            SELECT e.*, c.nome as cliente_nome, l.titulo as livro_titulo
             FROM emprestimos e
-            JOIN usuarios u ON e.usuario_id = u.id
+            JOIN clientes c ON e.cliente_id = c.id
+            JOIN livros l ON e.livro_id = l.id
             WHERE e.livro_id = ?
             ORDER BY e.data_emprestimo DESC
             """,
@@ -169,4 +101,47 @@ class Emprestimo:
         emprestimos = cursor.fetchall()
         
         conn.close()
-        return emprestimos 
+        return emprestimos
+        
+    def registrar_devolucao(self, emprestimo_id):
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Busca informações do empréstimo
+            cursor.execute(
+                "SELECT livro_id, data_devolucao_prevista FROM emprestimos WHERE id = ?",
+                (emprestimo_id,)
+            )
+            emprestimo = cursor.fetchone()
+            
+            if not emprestimo:
+                return False, "Empréstimo não encontrado"
+                
+            livro_id, data_prevista = emprestimo
+            
+            # Registra a devolução
+            cursor.execute(
+                """
+                UPDATE emprestimos 
+                SET data_devolucao_real = CURRENT_TIMESTAMP,
+                    status = 'devolvido'
+                WHERE id = ?
+                """,
+                (emprestimo_id,)
+            )
+            
+            # Atualiza a quantidade disponível do livro
+            cursor.execute(
+                "UPDATE livros SET disponivel = disponivel + 1 WHERE id = ?",
+                (livro_id,)
+            )
+            
+            conn.commit()
+            return True, "Devolução registrada com sucesso"
+            
+        except Exception as e:
+            conn.rollback()
+            return False, f"Erro ao registrar devolução: {str(e)}"
+        finally:
+            conn.close() 
