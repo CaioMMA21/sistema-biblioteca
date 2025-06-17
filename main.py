@@ -153,75 +153,54 @@ class SistemaBiblioteca:
         label = ctk.CTkLabel(self.frame_conteudo, text="Gerenciamento de Empréstimos", font=("Arial", 18, "bold"))
         label.pack(pady=20)
 
-        # Frame principal para o formulário
         frame_principal = ctk.CTkFrame(self.frame_conteudo)
         frame_principal.pack(pady=10, padx=20, fill="both", expand=True)
-
-        # Frame do formulário
         frame_formulario = ctk.CTkFrame(frame_principal)
         frame_formulario.pack(pady=20, padx=20, fill="both", expand=True)
-
-        # Título do formulário
         label_titulo = ctk.CTkLabel(frame_formulario, text="Novo Empréstimo", font=("Arial", 14, "bold"))
         label_titulo.pack(pady=10)
-
-        # Frame para os campos
         frame_campos = ctk.CTkFrame(frame_formulario)
         frame_campos.pack(pady=10, padx=20, fill="x")
-
-        # Campos do cliente
         label_cliente = ctk.CTkLabel(frame_campos, text="Dados do Cliente", font=("Arial", 12, "bold"))
         label_cliente.grid(row=0, column=0, columnspan=2, pady=10, sticky="w")
-
         label_nome = ctk.CTkLabel(frame_campos, text="Nome do Cliente:")
         label_nome.grid(row=1, column=0, padx=5, pady=5, sticky="w")
         self.entrada_nome_emprestimo = ctk.CTkEntry(frame_campos, width=250)
         self.entrada_nome_emprestimo.grid(row=1, column=1, padx=5, pady=5)
-
         label_numero = ctk.CTkLabel(frame_campos, text="Número:")
         label_numero.grid(row=2, column=0, padx=5, pady=5, sticky="w")
         self.entrada_numero_emprestimo = ctk.CTkEntry(frame_campos, width=250)
         self.entrada_numero_emprestimo.grid(row=2, column=1, padx=5, pady=5)
-
         label_email = ctk.CTkLabel(frame_campos, text="Email:")
         label_email.grid(row=3, column=0, padx=5, pady=5, sticky="w")
         self.entrada_email_emprestimo = ctk.CTkEntry(frame_campos, width=250)
         self.entrada_email_emprestimo.grid(row=3, column=1, padx=5, pady=5)
-
-        # Campos do livro
         label_livro = ctk.CTkLabel(frame_campos, text="Dados do Livro", font=("Arial", 12, "bold"))
         label_livro.grid(row=4, column=0, columnspan=2, pady=10, sticky="w")
-
         label_titulo_livro = ctk.CTkLabel(frame_campos, text="Título do Livro:")
         label_titulo_livro.grid(row=5, column=0, padx=5, pady=5, sticky="w")
         self.entrada_titulo_emprestimo = ctk.CTkEntry(frame_campos, width=250)
         self.entrada_titulo_emprestimo.grid(row=5, column=1, padx=5, pady=5)
-
-        # Campo para quantidade de dias
+        self.frame_resultado_livros = ctk.CTkFrame(frame_campos)
+        self.frame_resultado_livros.grid(row=6, column=0, columnspan=2, sticky="ew", padx=5, pady=2)
         label_dias = ctk.CTkLabel(frame_campos, text="Quantidade de Dias:")
-        label_dias.grid(row=6, column=0, padx=5, pady=5, sticky="w")
+        label_dias.grid(row=7, column=0, padx=5, pady=5, sticky="w")
         self.entrada_dias_emprestimo = ctk.CTkEntry(frame_campos, width=100)
-        self.entrada_dias_emprestimo.grid(row=6, column=1, padx=5, pady=5, sticky="w")
-
-        # Botão de busca de cliente
+        self.entrada_dias_emprestimo.grid(row=7, column=1, padx=5, pady=5, sticky="w")
         botao_buscar_cliente = ctk.CTkButton(
             frame_campos,
             text="Buscar Cliente",
             command=self.buscar_cliente_emprestimo,
             width=120
         )
-        botao_buscar_cliente.grid(row=7, column=0, padx=5, pady=10)
-
-        # Botão de busca de livro
+        botao_buscar_cliente.grid(row=8, column=0, padx=5, pady=10)
         botao_buscar_livro = ctk.CTkButton(
             frame_campos,
             text="Buscar Livro",
             command=self.buscar_livro_emprestimo,
             width=120
         )
-        botao_buscar_livro.grid(row=7, column=1, padx=5, pady=10)
-
-        # Botão de confirmar empréstimo
+        botao_buscar_livro.grid(row=8, column=1, padx=5, pady=10)
         botao_confirmar = ctk.CTkButton(
             frame_formulario,
             text="Confirmar Empréstimo",
@@ -285,46 +264,23 @@ class SistemaBiblioteca:
             janela_selecao.destroy()
 
     def buscar_livro_emprestimo(self):
-        titulo = self.entrada_titulo_emprestimo.get().strip()
-        if not titulo:
-            messagebox.showwarning("Aviso", "Digite o título do livro para buscar!")
-            return
-
+        termo = self.entrada_titulo_emprestimo.get().strip()
         from models.livro import Livro
         livro_model = Livro()
-        livros = livro_model.buscar(titulo)
-
+        livros = livro_model.buscar(termo)
+        for widget in self.frame_resultado_livros.winfo_children():
+            widget.destroy()
         if not livros:
-            messagebox.showinfo("Informação", "Livro não encontrado!")
+            ctk.CTkLabel(self.frame_resultado_livros, text="Nenhum livro encontrado.").pack()
             return
-
-        # Se encontrou mais de um livro, mostra uma lista para selecionar
-        if len(livros) > 1:
-            # Criar uma janela de seleção
-            janela_selecao = ctk.CTkToplevel(self.janela)
-            janela_selecao.title("Selecionar Livro")
-            janela_selecao.geometry("400x300")
-
-            label = ctk.CTkLabel(janela_selecao, text="Selecione o livro:")
-            label.pack(pady=10)
-
-            frame_lista = ctk.CTkFrame(janela_selecao)
-            frame_lista.pack(pady=10, padx=20, fill="both", expand=True)
-
-            for livro in livros:
-                frame_livro = ctk.CTkFrame(frame_lista)
-                frame_livro.pack(fill="x", pady=2)
-                
-                texto = f"{livro[1]} - {livro[2]} - Disponível: {livro[5]}"
-                botao = ctk.CTkButton(
-                    frame_livro,
-                    text=texto,
-                    command=lambda l=livro: self.selecionar_livro(l, janela_selecao)
-                )
-                botao.pack(fill="x", padx=5, pady=2)
-        else:
-            # Se encontrou apenas um livro, seleciona automaticamente
-            self.selecionar_livro(livros[0])
+        for livro in livros:
+            texto = f"{livro[1]} - {livro[2]} - ISBN: {livro[3]} - Disponível: {livro[5]}"
+            botao = ctk.CTkButton(
+                self.frame_resultado_livros,
+                text=texto,
+                command=lambda l=livro: self.selecionar_livro(l)
+            )
+            botao.pack(fill="x", padx=2, pady=1)
 
     def selecionar_livro(self, livro, janela_selecao=None):
         self.entrada_titulo_emprestimo.delete(0, "end")
